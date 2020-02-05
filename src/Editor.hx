@@ -1,5 +1,6 @@
 import haxegon.*;
-import Game;
+import flash.net.SharedObject;
+import haxe.Serializer;
 
 @:publicFields
 class Editor {
@@ -9,13 +10,19 @@ function new() {
 
 }
 
-function render() {
-    Gfx.clearscreen();
-    Text.display(0, 0, 'EDITOR', Col.WHITE);
+static inline function mouse_x(): Int {
+    return Math.floor(Mouse.x / Game.TILESIZE / Game.SCALE);
+}
+static inline function mouse_y(): Int {
+    return Math.floor(Mouse.y / Game.TILESIZE / Game.SCALE);
 }
 
-function update() {
-    render();
+static function update() {
+    Game.render();
+
+    Text.display(0, 0, 'EDITOR\n${mouse_x()} ${mouse_y()}', Col.WHITE);
+
+
 }
 
 }

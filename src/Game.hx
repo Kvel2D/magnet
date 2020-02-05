@@ -1,4 +1,7 @@
 import haxegon.*;
+import openfl.net.SharedObject;
+import haxe.Serializer;
+import haxe.Unserializer;
 
 enum BoxColor {
     BoxColor_Gray;
@@ -51,24 +54,26 @@ static inline var WORLD_HEIGHT = 20;
 static inline var TILESIZE = 16;
 static inline var SCALE = 4;
 
-var tiles: Array<Array<Int>>;
-var goals: Array<IntVector2>;
-var boxes: Array<Array<Box>>;
-var boxes_by_id: Map<Int, Box>;
-var box_id_max = 0;
+static var level_name: String;
+static var tiles: Array<Array<Int>>;
+static var goals: Array<IntVector2>;
+static var boxes: Array<Array<Box>>;
+static var boxes_by_id: Map<Int, Box>;
+static var box_id_max = 0;
 
-var groups: Map<Int, Array<Int>>;
+static var groups: Map<Int, Array<Int>>;
 static inline var GROUP_ID_NONE = -1;
-var group_id_max = GROUP_ID_NONE + 1;
-var magnet_group = new Array<Int>();
-var history: Array<Snapshot>;
+static var group_id_max = GROUP_ID_NONE + 1;
+static var magnet_group = new Array<Int>();
+static var history: Array<Snapshot>;
 
 
 function new() {
-    
+
 }
 
-function add_box(x, y): Box {
+static function add_box(x, y): Box {
+    box_id_max++;
     var box = {
         id: box_id_max,
         x: x,
@@ -77,13 +82,12 @@ function add_box(x, y): Box {
         color: BoxColor_Gray,
         group_id: GROUP_ID_NONE,
     };
-    box_id_max++;
     boxes_by_id[box.id] = box;
     boxes[x][y] = box;
     return box;
 }
 
-function init() {
+static function init() {
     tiles = Data.create2darray(WORLD_WIDTH, WORLD_HEIGHT, Tile.Wall);
     boxes_by_id = new Map<Int, Box>();
     // boxes = Data.create2darray(WORLD_WIDTH, WORLD_HEIGHT, null);
@@ -93,7 +97,7 @@ function init() {
     history = new Array<Snapshot>();
     groups = new Map<Int, Array<Int>>();
 
-    load_level(["####################",
+    load_level_string(["####################",
         "#gggg.#/#..........#",
         "#..................#",
         "#..///..p..........#",
@@ -143,8 +147,8 @@ function init() {
             groups[group_id].push(b1.id);
             b1.group_id = group_id;
         } else {
-            var group_id = group_id_max;
             group_id_max++;
+            var group_id = group_id_max;
             groups[group_id] = new Array<Int>();
             groups[group_id].push(b1.id);
             groups[group_id].push(b2.id);
@@ -166,7 +170,7 @@ function init() {
     connect({x: 10, y: 7}, {x: 10, y: 6});
 }
 
-function render() {
+static function render() {
     function screenx(x) {
         return x * TILESIZE * SCALE;
     }
@@ -252,7 +256,7 @@ function render() {
     Gfx.drawtile(screenx(Player.pos.x), screeny(Player.pos.y), 'tiles', player_tile);
 }
 
-function move_box(from: IntVector2, d: IntVector2) {
+static function move_box(from: IntVector2, d: IntVector2) {
     var to = {
         x: from.x + d.x,
         y: from.y + d.y,
@@ -264,7 +268,78 @@ function move_box(from: IntVector2, d: IntVector2) {
     box.y = to.y;
 }
 
-function load_level(level_strings: Array<String>) {
+static function new_level(name: String) {
+    var level_file = SharedObject.getLocal(name);
+
+    // Default tiles are all floor with walls on the sides
+    var default_tiles = [for (x in 0...WORLD_WIDTH) [for (y in 0...WORLD_HEIGHT) Tile.Wall]];
+    for (x in 1...(WORLD_WIDTH - 1)) {
+        for (y in 1...(WORLD_HEIGHT - 1)) {
+            default_tiles[x][y] = Tile.Floor;
+        }
+    }
+    level_file.data.tiles = default_tiles;
+
+    level_file.data.goals = Serializer.run(new Array<IntVector2>());
+
+    level_file.data.boxes = Serializer.run([for (i in 0...WORLD_WIDTH) [for (j in 0...WORLD_HEIGHT) null]]);
+
+    level_file.data.groups = Serializer.run(new Map<Int, Array<Int>>());
+
+    level_file.data.magnet_group = Serializer.run(new Array<Int>());
+
+    level_file.data.player_pos = Serializer.run({x: 5, y: 5});
+
+    level_file.flush();
+
+    load_level(name);
+}
+
+static function load_level(name: String) {
+    var level_file = SharedObject.getLocal(name);
+    
+    level_name = name;
+
+    tiles = level_file.data.tiles;
+
+    goals = Unserializer.run(level_file.data.goals);
+
+    boxes = Unserializer.run(level_file.data.boxes);
+
+    // Setup boxes_by_id and find box_id_max
+    boxes_by_id = new Map<Int, Box>();
+    box_id_max = 0;
+    for (x in 0...WORLD_WIDTH) {
+        for (y in 0...WORLD_HEIGHT) {
+            if (boxes[x][y] != null) {
+                var box = boxes[x][y];
+                boxes_by_id[box.id] = box;
+
+                if (box.id > box_id_max) {
+                    box_id_max = box.id;
+                }
+            }
+        }
+    }
+
+    groups = Unserializer.run(level_file.data.groups);
+
+    // Find group_id_max
+    group_id_max = 0;
+    for (id in groups.keys()) {
+        if (id > group_id_max) {
+            group_id_max = id;
+        }
+    }
+
+    magnet_group = Unserializer.run(level_file.data.magnet_group);
+
+    history = new Array<Snapshot>();
+
+    Player.pos = Unserializer.run(level_file.data.player_pos);
+}
+
+static function load_level_string(level_strings: Array<String>) {
     // Transform level strings into 2d array of 1 char strings
     var level = new Array<Array<String>>();
     for (line in level_strings) {
@@ -320,7 +395,7 @@ function load_level(level_strings: Array<String>) {
     }
 }
 
-function save_level(): Array<String> {
+static function save_level(): Array<String> {
     var level = [for (x in 0...WORLD_WIDTH) [for (y in 0...WORLD_HEIGHT) '#']];
 
     // Set tiles
@@ -372,7 +447,7 @@ function save_level(): Array<String> {
     return level_strings;
 }
 
-function save_snapshot() {
+static function save_snapshot() {
     var boxes_snapshot = new Map<Int, IntVector2>();
     for (id in boxes_by_id.keys()) {
         var box = boxes_by_id[id];
@@ -392,7 +467,7 @@ function save_snapshot() {
     });
 }
 
-function undo() {
+static function undo() {
     if (history.length == 0) {
         return;
     }
@@ -417,8 +492,8 @@ function undo() {
     }
 }
 
-function update() {
-    if (Input.delaypressed(Key.Z, 5)) {
+static function update() {
+    if (Input.delaypressed(Key.Z, 10)) {
         undo();
     }
 
@@ -445,16 +520,16 @@ function update() {
         y: 0,
     };
 
-    if (Input.delaypressed(Key.W, 5)) {
+    if (Input.delaypressed(Key.W, 10)) {
         player_d.y = -1;
     }
-    if (Input.delaypressed(Key.S, 5)) {
+    if (Input.delaypressed(Key.S, 10)) {
         player_d.y = 1;
     }
-    if (Input.delaypressed(Key.A, 5)) {
+    if (Input.delaypressed(Key.A, 10)) {
         player_d.x = -1;
     }
-    if (Input.delaypressed(Key.D, 5)) {
+    if (Input.delaypressed(Key.D, 10)) {
         player_d.x = 1;
     }
 
@@ -642,8 +717,6 @@ function update() {
     }
 
     render();
-
-    Text.display(0, 0, 'test');
 }
 
 }
