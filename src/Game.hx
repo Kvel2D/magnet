@@ -54,7 +54,6 @@ static inline var WORLD_HEIGHT = 20;
 static inline var TILESIZE = 16;
 static inline var SCALE = 4;
 
-static var level_name: String;
 static var tiles: Array<Array<Int>>;
 static var goals: Array<IntVector2>;
 static var boxes: Array<Array<Box>>;
@@ -66,7 +65,6 @@ static inline var GROUP_ID_NONE = -1;
 static var group_id_max = GROUP_ID_NONE + 1;
 static var magnet_group = new Array<Int>();
 static var history: Array<Snapshot>;
-
 
 function new() {
 
@@ -96,28 +94,6 @@ static function init() {
     goals = new Array<IntVector2>();
     history = new Array<Snapshot>();
     groups = new Map<Int, Array<Int>>();
-
-    load_level_string(["####################",
-        "#gggg.#/#..........#",
-        "#..................#",
-        "#..///..p..........#",
-        "#..................#",
-        "#..................#",
-        "#..................#",
-        "#..................#",
-        "#..................#",
-        "#..................#",
-        "#..................#",
-        "#..................#",
-        "#..................#",
-        "#..................#",
-        "#..................#",
-        "#..................#",
-        "#..................#",
-        "#..................#",
-        "#..................#",
-        "####################"] );
-    return;
 
     for (x in 1...(WORLD_WIDTH - 1)) {
         for (y in 1...(WORLD_HEIGHT - 1)) {
@@ -268,7 +244,7 @@ static function move_box(from: IntVector2, d: IntVector2) {
     box.y = to.y;
 }
 
-static function new_level(name: String) {
+static function init_new_level(name: String) {
     var level_file = SharedObject.getLocal(name);
 
     // Default tiles are all floor with walls on the sides
@@ -298,8 +274,6 @@ static function new_level(name: String) {
 static function load_level(name: String) {
     var level_file = SharedObject.getLocal(name);
     
-    level_name = name;
-
     tiles = level_file.data.tiles;
 
     goals = Unserializer.run(level_file.data.goals);
@@ -339,112 +313,20 @@ static function load_level(name: String) {
     Player.pos = Unserializer.run(level_file.data.player_pos);
 }
 
-static function load_level_string(level_strings: Array<String>) {
-    // Transform level strings into 2d array of 1 char strings
-    var level = new Array<Array<String>>();
-    for (line in level_strings) {
-        var line_array = new Array<String>();
-        
-        for (i in 0...line.length) {
-            line_array.push(line.substr(i, 1));
-        }
+static function save_level(name: String) {
+    var level_file = SharedObject.getLocal(name);
+    
+    level_file.data.tiles = tiles;
 
-        level.push(line_array);
-    }
+    level_file.data.goals = Serializer.run(goals);
 
-    var zero_code = '0'.charCodeAt(0);
+    level_file.data.boxes = Serializer.run(boxes);
 
-    for (x in 0...WORLD_WIDTH) {
-        for (y in 0...WORLD_HEIGHT) {
-            var c = level[x][y];
+    level_file.data.groups = Serializer.run(groups);
 
-            tiles[x][y] = Tile.Floor;
+    level_file.data.magnet_group = Serializer.run(magnet_group);
 
-            if (c == '#') {
-                // Wall
-                tiles[x][y] = Tile.Wall;
-            } else if (c == '.') {
-            } else if (c == 'p') {
-                // Player
-                Player.pos = {
-                    x: x,
-                    y: y
-                };
-            } else if (c == 'g') {
-                // Goal
-                goals.push({
-                    x: x,
-                    y: y
-                });
-            } else {
-                // Box
-                var group_id = c.charCodeAt(0) - zero_code;
-
-                var box = add_box(x, y);
-                box.group_id = group_id;
-
-                // Add box to group if it's grouped
-                if (box.group_id != GROUP_ID_NONE) {
-                    if (!groups.exists(group_id)) {
-                        groups[group_id] = new Array<Int>(); 
-                    }
-                    groups[group_id].push(box.id);
-                }
-            }
-        }
-    }
-}
-
-static function save_level(): Array<String> {
-    var level = [for (x in 0...WORLD_WIDTH) [for (y in 0...WORLD_HEIGHT) '#']];
-
-    // Set tiles
-    for (x in 0...WORLD_WIDTH) {
-        for (y in 0...WORLD_HEIGHT) {
-            if (tiles[x][y] != Tile.Wall) {
-                level[x][y] = '.';
-            }
-        }
-    }
-
-    // Set goals
-    for (g in goals) {
-        level[g.x][g.y] = 'g';
-    }
-
-    // Set player
-    level[Player.pos.x][Player.pos.y] = 'p';
-
-    var zero_code = '0'.charCodeAt(0);
-
-    // Set boxes, boxes are written by their group_id
-    // Start from char '0' for convenience
-    for (group_id in groups.keys()) {
-        var group = groups[group_id];
-
-        for (box_id in group) {
-            var box = boxes_by_id[box_id];
-
-            level[box.x][box.y] = String.fromCharCode(zero_code + box.group_id);
-        }
-    }
-
-    // And non-grouped boxes
-    for (box_id in boxes_by_id.keys()) {
-        var box = boxes_by_id[box_id];
-
-        if (box.group_id == GROUP_ID_NONE) {
-            level[box.x][box.y] = String.fromCharCode(zero_code + box.group_id);
-        }
-    }
-
-    var level_strings = [for (x in 0...WORLD_WIDTH) ''];
-    for (x in 0...WORLD_WIDTH) {
-        for (y in 0...WORLD_HEIGHT) {
-            level_strings[x] += level[x][y];
-        }
-    }
-    return level_strings;
+    level_file.data.player_pos = Serializer.run(Player.pos);
 }
 
 static function save_snapshot() {

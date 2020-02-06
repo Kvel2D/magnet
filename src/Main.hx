@@ -17,6 +17,7 @@ static inline var SCREEN_HEIGHT = 900;
 static var state = State_Game;
 
 static var level_list: Array<String>;
+static var current_level: String;
 
 function init(){
     Gfx.resizescreen(SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -28,12 +29,13 @@ function init(){
     if (level_list_file.data.level_list == null) {
         // Setup default level if it doesn't exist yet
         level_list_file.data.level_list = ['default'];
-        Game.new_level('default');
+        Game.init_new_level('default');
         level_list_file.flush();
     }
     level_list = level_list_file.data.level_list;
 
-    Game.load_level('default');
+    current_level = 'default';
+    Game.load_level(current_level);
 }
 
 static function save_level_list() {
@@ -44,9 +46,9 @@ static function save_level_list() {
 
 function update() {
     if (Input.justpressed(Key.L)) {
-        // Reset game if currently ingame
+        // Reset current level if currently ingame
         if (state == State_Game) {
-            Game.load_level(Game.level_name);
+            Game.load_level(current_level);
         }
 
         // Edit.save_changes();
@@ -66,7 +68,7 @@ function update() {
             Gfx.drawtoscreen();
         }
 
-        Game.load_level(Game.level_name);
+        Game.load_level(current_level);
     }
 
     if (Input.justpressed(Key.E)) {
