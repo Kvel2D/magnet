@@ -14,10 +14,12 @@ class Main {
 static inline var SCREEN_WIDTH = 900;
 static inline var SCREEN_HEIGHT = 900;
 
+static var prev_state = State_Game;
 static var state = State_Game;
 
 static var level_list: Array<String>;
 static var current_level: String;
+
 
 function init(){
     Gfx.resizescreen(SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -44,19 +46,25 @@ static function save_level_list() {
     level_list_file.flush();
 }
 
+static function change_state(new_state) {
+    prev_state = state;
+    state = new_state;
+}
+
 function update() {
-    if (Input.justpressed(Key.L)) {
-        // Reset current level if currently ingame
-        if (state == State_Game) {
-            Game.load_level(current_level);
-        }
-
-        // Edit.save_changes();
-
-        if (state == State_LevelSelect) {
-            state = State_Game;
-        } else {
-            state = State_LevelSelect;
+    if (Input.justpressed(Key.TWO)) {
+        switch (state) {
+            case State_LevelSelect: {
+                change_state(prev_state);
+            }
+            case State_Game: {
+                Text.inputbuffer = '';
+                change_state(State_LevelSelect);
+            }
+            case State_Editor: {
+                Text.inputbuffer = '';
+                change_state(State_LevelSelect);
+            }
         }
 
         // Render thumbnails
@@ -71,11 +79,17 @@ function update() {
         Game.load_level(current_level);
     }
 
-    if (Input.justpressed(Key.E)) {
-        state = switch (state) {
-            case State_Game: State_Editor;
-            case State_Editor: State_Game;
-            case State_LevelSelect: state;
+    if (Input.justpressed(Key.ONE)) {
+        switch (state) {
+            case State_Game: {
+                Game.load_level(current_level);
+                change_state(State_Editor);
+            }
+            case State_Editor: {
+                Game.save_level(current_level);
+                change_state(State_Game);
+            }
+            case State_LevelSelect:
         }
     }
 

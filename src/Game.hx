@@ -58,7 +58,6 @@ static var tiles: Array<Array<Int>>;
 static var goals: Array<IntVector2>;
 static var boxes: Array<Array<Box>>;
 static var boxes_by_id: Map<Int, Box>;
-static var box_id_max = 0;
 
 static var groups: Map<Int, Array<Int>>;
 static inline var GROUP_ID_NONE = -1;
@@ -70,27 +69,11 @@ function new() {
 
 }
 
-static function add_box(x, y): Box {
-    box_id_max++;
-    var box = {
-        id: box_id_max,
-        x: x,
-        y: y,
-        is_magnet: false,
-        color: BoxColor_Gray,
-        group_id: GROUP_ID_NONE,
-    };
-    boxes_by_id[box.id] = box;
-    boxes[x][y] = box;
-    return box;
-}
-
 static function init() {
     tiles = Data.create2darray(WORLD_WIDTH, WORLD_HEIGHT, Tile.Wall);
     boxes_by_id = new Map<Int, Box>();
     // boxes = Data.create2darray(WORLD_WIDTH, WORLD_HEIGHT, null);
     boxes = [for (i in 0...WORLD_WIDTH) [for (j in 0...WORLD_HEIGHT) null]];
-    box_id_max = 0;
     goals = new Array<IntVector2>();
     history = new Array<Snapshot>();
     groups = new Map<Int, Array<Int>>();
@@ -132,18 +115,6 @@ static function init() {
             b2.group_id = group_id;
         }
     }
-
-    add_box(7, 7);
-    add_box(8, 7);
-    add_box(9, 7);
-    add_box(10, 7);
-    add_box(10, 6);
-
-    add_box(10, 10);
-    boxes[10][10].color = BoxColor_Orange;
-
-    connect({x: 10, y: 7}, {x: 9, y: 7});
-    connect({x: 10, y: 7}, {x: 10, y: 6});
 }
 
 static function render() {
@@ -249,8 +220,8 @@ static function init_new_level(name: String) {
 
     // Default tiles are all floor with walls on the sides
     var default_tiles = [for (x in 0...WORLD_WIDTH) [for (y in 0...WORLD_HEIGHT) Tile.Wall]];
-    for (x in 1...(WORLD_WIDTH - 1)) {
-        for (y in 1...(WORLD_HEIGHT - 1)) {
+    for (x in 1...13) {
+        for (y in 1...13) {
             default_tiles[x][y] = Tile.Floor;
         }
     }
@@ -261,8 +232,6 @@ static function init_new_level(name: String) {
     level_file.data.boxes = Serializer.run([for (i in 0...WORLD_WIDTH) [for (j in 0...WORLD_HEIGHT) null]]);
 
     level_file.data.groups = Serializer.run(new Map<Int, Array<Int>>());
-
-    level_file.data.magnet_group = Serializer.run(new Array<Int>());
 
     level_file.data.player_pos = Serializer.run({x: 5, y: 5});
 
@@ -280,18 +249,13 @@ static function load_level(name: String) {
 
     boxes = Unserializer.run(level_file.data.boxes);
 
-    // Setup boxes_by_id and find box_id_max
+    // Setup boxes_by_id
     boxes_by_id = new Map<Int, Box>();
-    box_id_max = 0;
     for (x in 0...WORLD_WIDTH) {
         for (y in 0...WORLD_HEIGHT) {
             if (boxes[x][y] != null) {
                 var box = boxes[x][y];
                 boxes_by_id[box.id] = box;
-
-                if (box.id > box_id_max) {
-                    box_id_max = box.id;
-                }
             }
         }
     }
@@ -305,8 +269,6 @@ static function load_level(name: String) {
             group_id_max = id;
         }
     }
-
-    magnet_group = Unserializer.run(level_file.data.magnet_group);
 
     history = new Array<Snapshot>();
 
@@ -323,8 +285,6 @@ static function save_level(name: String) {
     level_file.data.boxes = Serializer.run(boxes);
 
     level_file.data.groups = Serializer.run(groups);
-
-    level_file.data.magnet_group = Serializer.run(magnet_group);
 
     level_file.data.player_pos = Serializer.run(Player.pos);
 }
@@ -599,6 +559,8 @@ static function update() {
     }
 
     render();
+
+    Text.display(0, 0, Main.current_level);
 }
 
 }
