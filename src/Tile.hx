@@ -21,5 +21,6 @@ static inline var Box = at(0, 3);
 static inline var BoxMagnet = at(2, 3);
 static inline var BoxOrange = at(0, 5);
 static inline var Goal = at(0, 1);
+static inline var Water = at(2, 5);
 
 }

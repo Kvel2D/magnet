@@ -9,8 +9,10 @@ enum ToolType {
     ToolType_Delete;
     ToolType_PlaceWall;
     ToolType_PlaceBox;
+    ToolType_PlaceNormalBox;
     ToolType_PlaceGoal;
     ToolType_PlacePlayer;
+    ToolType_PlaceWater;
 }
 
 @:publicFields
@@ -119,9 +121,11 @@ static function update() {
     }
     tool_shortcut(Key.D, ToolType_Delete);
     tool_shortcut(Key.B, ToolType_PlaceBox);
+    tool_shortcut(Key.N, ToolType_PlaceNormalBox);
     tool_shortcut(Key.G, ToolType_PlaceGoal);
     tool_shortcut(Key.P, ToolType_PlacePlayer);
     tool_shortcut(Key.W, ToolType_PlaceWall);
+    tool_shortcut(Key.H, ToolType_PlaceWater);
 
     if (!HOVERING_BUTTONE && (Mouse.leftclick() || Mouse.leftheld())) {
         var x = mouse_x();
@@ -135,6 +139,11 @@ static function update() {
                 if (no_player) {
                     delete(x, y);
                     Game.tiles[x][y] = Tile.Wall;
+                }
+            }
+            case ToolType_PlaceWater: {
+                if (no_player) {
+                    Game.tiles[x][y] = Tile.Water;
                 }
             }
             case ToolType_Delete: {
@@ -162,6 +171,35 @@ static function update() {
                             y: y,
                             is_magnet: false,
                             color: BoxColor_Gray,
+                            group_id: Game.GROUP_ID_NONE,
+                        };
+                        Game.boxes_by_id[box.id] = box;
+                        Game.boxes[x][y] = box;
+                    }
+                }
+            }
+            case ToolType_PlaceNormalBox: {                
+                if (no_player) {
+                    delete(x, y);
+
+                    // Find lowest available box id
+                    var free_id = -1;
+                    for (id in 0...100) {
+                        if (!Game.boxes_by_id.exists(id)) {
+                            free_id = id;
+                            break;
+                        }
+                    }
+
+                    if (free_id == -1) {
+                        trace('RAN OUT OF BOX IDS');
+                    } else {
+                        var box = {
+                            id: free_id,
+                            x: x,
+                            y: y,
+                            is_magnet: false,
+                            color: BoxColor_Orange,
                             group_id: Game.GROUP_ID_NONE,
                         };
                         Game.boxes_by_id[box.id] = box;

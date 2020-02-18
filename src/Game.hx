@@ -334,24 +334,45 @@ static function undo() {
     }
 }
 
+static function xd(arr, pos: IntVector2) {
+    return arr[pos.x][pos.y];
+}
+
 static function update() {
     if (Input.delaypressed(Key.Z, 10)) {
         undo();
     }
 
     // Change magnet direction
-    if (Input.justpressed(Key.LEFT)) {
-        Player.direction = Direction_Left;
-        save_snapshot();
-    } else if (Input.justpressed(Key.RIGHT)) {
-        Player.direction = Direction_Right;
-        save_snapshot();
-    } else if (Input.justpressed(Key.UP)) {
-        Player.direction = Direction_Up;
-        save_snapshot();
-    } else if (Input.justpressed(Key.DOWN)) {
-        Player.direction = Direction_Down;
-        save_snapshot();
+    // if (Input.justpressed(Key.LEFT)) {
+    //     Player.direction = Direction_Left;
+    //     save_snapshot();
+    // } else if (Input.justpressed(Key.RIGHT)) {
+    //     Player.direction = Direction_Right;
+    //     save_snapshot();
+    // } else if (Input.justpressed(Key.UP)) {
+    //     Player.direction = Direction_Up;
+    //     save_snapshot();
+    // } else if (Input.justpressed(Key.DOWN)) {
+    //     Player.direction = Direction_Down;
+    //     save_snapshot();
+    // }
+
+    // Rotate player
+    if (Input.delaypressed(Key.LEFT, 10)) {
+        switch (Player.direction) {
+            case Direction_Down: Player.direction = Direction_Right;
+            case Direction_Right: Player.direction = Direction_Up;
+            case Direction_Up: Player.direction = Direction_Left;
+            case Direction_Left: Player.direction = Direction_Down;
+        }
+    } else if (Input.delaypressed(Key.RIGHT, 10)) {
+        switch (Player.direction) {
+            case Direction_Down: Player.direction = Direction_Left;
+            case Direction_Left: Player.direction = Direction_Up;
+            case Direction_Up: Player.direction = Direction_Right;
+            case Direction_Right: Player.direction = Direction_Down;
+        }
     }
 
     //
@@ -361,38 +382,60 @@ static function update() {
         x: 0,
         y: 0,
     };
+    var moving_backwards = false;
 
-    if (Input.delaypressed(Key.W, 10)) {
-        player_d.y = -1;
+    if (Input.delaypressed(Key.UP, 10)) {
+        switch (Player.direction) {
+            case Direction_Down: player_d.y = 1;
+            case Direction_Up: player_d.y = -1;
+            case Direction_Right: player_d.x = 1;
+            case Direction_Left: player_d.x = -1;
+        }
     }
-    if (Input.delaypressed(Key.S, 10)) {
-        player_d.y = 1;
-    }
-    if (Input.delaypressed(Key.A, 10)) {
-        player_d.x = -1;
-    }
-    if (Input.delaypressed(Key.D, 10)) {
-        player_d.x = 1;
+    if (Input.delaypressed(Key.DOWN, 10)) {
+        moving_backwards = true;
+
+        switch (Player.direction) {
+            case Direction_Down: player_d.y = -1;
+            case Direction_Up: player_d.y = 1;
+            case Direction_Right: player_d.x = -1;
+            case Direction_Left: player_d.x = 1;
+        }
     }
 
-    // Only move if one button pressed
-    var count = 0;
-    if (Input.pressed(Key.W)) {
-        count++;
-    }
-    if (Input.pressed(Key.A)) {
-        count++;
-    }
-    if (Input.pressed(Key.S)) {
-        count++;
-    }
-    if (Input.pressed(Key.D)) {
-        count++;
-    }
-    if (count > 1) {
-        player_d.x = 0;
-        player_d.y = 0;
-    }
+
+
+    // if (Input.delaypressed(Key.W, 10)) {
+    //     player_d.y = -1;
+    // }
+    // if (Input.delaypressed(Key.S, 10)) {
+    //     player_d.y = 1;
+    // }
+    // if (Input.delaypressed(Key.A, 10)) {
+    //     player_d.x = -1;
+    // }
+    // if (Input.delaypressed(Key.D, 10)) {
+    //     player_d.x = 1;
+    // }
+
+    // // Only move if one button pressed
+    // var count = 0;
+    // if (Input.pressed(Key.W)) {
+    //     count++;
+    // }
+    // if (Input.pressed(Key.A)) {
+    //     count++;
+    // }
+    // if (Input.pressed(Key.S)) {
+    //     count++;
+    // }
+    // if (Input.pressed(Key.D)) {
+    //     count++;
+    // }
+    // if (count > 1) {
+    //     player_d.x = 0;
+    //     player_d.y = 0;
+    // }
 
     // 
     // Find if can move
@@ -410,6 +453,16 @@ static function update() {
     };
     stack.push(first_pos);
     checked[first_pos.x][first_pos.y] = true;
+
+    // Player can't walk on water
+    if (xd(tiles, first_pos) == Tile.Water) {
+        can_move = false;
+    }
+
+    // Can't push boxes backwards
+    if (moving_backwards && xd(boxes, first_pos)) {
+        can_move = false;
+    }
 
     while (stack.length > 0) {
         var pos = stack.pop();
@@ -561,6 +614,10 @@ static function update() {
     render();
 
     Text.display(0, 0, Main.current_level);
+
+    if (Input.justpressed(Key.R)) {
+        load_level(Main.current_level);
+    }
 }
 
 }
