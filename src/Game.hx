@@ -334,7 +334,7 @@ static function undo() {
     }
 }
 
-static function xd(arr, pos: IntVector2) {
+static function xd<T>(arr: Array<Array<T>>, pos: IntVector2): T {
     return arr[pos.x][pos.y];
 }
 
@@ -460,7 +460,7 @@ static function update() {
     }
 
     // Can't push boxes backwards
-    if (moving_backwards && xd(boxes, first_pos)) {
+    if (moving_backwards && xd(boxes, first_pos) != null) {
         can_move = false;
     }
 
