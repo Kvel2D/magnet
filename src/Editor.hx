@@ -2,8 +2,12 @@ import haxegon.*;
 import flash.net.SharedObject;
 import haxe.Serializer;
 import Game;
+import Vec2iTools.Vec2i;
+import Vec2iTools.*;
+import Vec2iTools.v_make as v;
 
 using MathExtensions;
+using ArrayExtensions;
 
 enum ToolType {
     ToolType_Delete;
@@ -78,14 +82,14 @@ static function delete(x, y) {
         Game.magnet_group.remove(box.id);
         
         // Remove from boxes
-        Game.boxes[box.x][box.y] = null;
+        Game.boxes.vset(box.pos, null);
         Game.boxes_by_id.remove(box.id);
     }
 
     // Remove goal
     var removed_goal = null;
     for (g in Game.goals) {
-        if (g.x == x && g.y == y) {
+        if (v_eql(g, v(x, y))) {
             removed_goal = g;
             break;
         }
@@ -93,6 +97,23 @@ static function delete(x, y) {
     if (removed_goal != null) {
         Game.goals.remove(removed_goal);
     }
+}
+
+static function get_box_id(): Int {
+    // Find lowest available box id
+    var free_id = -1;
+    for (id in 0...100) {
+        if (!Game.boxes_by_id.exists(id)) {
+            free_id = id;
+            break;
+        }
+    }
+
+    if (free_id == -1) {
+        trace('RAN OUT OF BOX IDS');
+    }
+
+    return free_id;
 }
 
 static function update() {    
@@ -131,7 +152,7 @@ static function update() {
         var x = mouse_x();
         var y = mouse_y();
 
-        var no_player = !(Player.pos.x == x && Player.pos.y == y);
+        var no_player = !v_eql(Player.pos, v(x, y));
         var box_here = Game.boxes[x][y] != null;
 
         switch (current_tool) {
@@ -153,70 +174,41 @@ static function update() {
                 if (no_player) {
                     delete(x, y);
 
-                    // Find lowest available box id
-                    var free_id = -1;
-                    for (id in 0...100) {
-                        if (!Game.boxes_by_id.exists(id)) {
-                            free_id = id;
-                            break;
-                        }
-                    }
-
-                    if (free_id == -1) {
-                        trace('RAN OUT OF BOX IDS');
-                    } else {
-                        var box = {
-                            id: free_id,
-                            x: x,
-                            y: y,
-                            is_magnet: false,
-                            color: BoxColor_Gray,
-                            group_id: Game.GROUP_ID_NONE,
-                        };
-                        Game.boxes_by_id[box.id] = box;
-                        Game.boxes[x][y] = box;
-                    }
+                    var box = {
+                        id: get_box_id(),
+                        pos: v(x, y),
+                        is_magnet: true,
+                        color: BoxColor_Gray,
+                        group_id: Game.GROUP_ID_NONE,
+                    };
+                    Game.boxes_by_id[box.id] = box;
+                    Game.boxes[x][y] = box;
                 }
             }
             case ToolType_PlaceNormalBox: {                
                 if (no_player) {
                     delete(x, y);
 
-                    // Find lowest available box id
-                    var free_id = -1;
-                    for (id in 0...100) {
-                        if (!Game.boxes_by_id.exists(id)) {
-                            free_id = id;
-                            break;
-                        }
-                    }
-
-                    if (free_id == -1) {
-                        trace('RAN OUT OF BOX IDS');
-                    } else {
-                        var box = {
-                            id: free_id,
-                            x: x,
-                            y: y,
-                            is_magnet: false,
-                            color: BoxColor_Orange,
-                            group_id: Game.GROUP_ID_NONE,
-                        };
-                        Game.boxes_by_id[box.id] = box;
-                        Game.boxes[x][y] = box;
-                    }
+                    var box = {
+                        id: get_box_id(),
+                        pos: v(x, y),
+                        is_magnet: false,
+                        color: BoxColor_Orange,
+                        group_id: Game.GROUP_ID_NONE,
+                    };
+                    Game.boxes_by_id[box.id] = box;
+                    Game.boxes[x][y] = box;
                 }
             }
             case ToolType_PlaceGoal: {
                 delete(x, y);
 
-                Game.goals.push({x: x, y: y});
+                Game.goals.push(v(x, y));
             }
             case ToolType_PlacePlayer: {
                 delete(x, y);
 
-                Player.pos.x = x;
-                Player.pos.y = y;
+                Player.pos = v(x, y);
             }
         }
     }

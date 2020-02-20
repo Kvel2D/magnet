@@ -13,14 +13,12 @@ class Main {
 
 static inline var SCREEN_WIDTH = 900;
 static inline var SCREEN_HEIGHT = 900;
-static inline var RE_SERIALIZE = false;
 
 static var prev_state = State_Game;
 static var state = State_Game;
 
 static var level_list: Array<String>;
 static var current_level: String;
-
 
 function init(){
     Gfx.resizescreen(SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -36,13 +34,6 @@ function init(){
         level_list_file.flush();
     }
     level_list = level_list_file.data.level_list;
-
-    if (RE_SERIALIZE) {
-        for (l in level_list) {
-            Game.load_level_old(l);
-            Game.save_level(l);
-        }
-    }
 
     current_level = 'default';
     Game.load_level(current_level);

@@ -1,4 +1,5 @@
 import haxegon.*;
+import Vec2iTools.Vec2i;
 
 typedef Vec2f = {
     x: Float,
