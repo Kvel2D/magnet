@@ -66,7 +66,7 @@ static var magnet_group = new Array<Int>();
 static var history: Array<Snapshot>;
 
 function new() {
-
+    var test: Array<Array<Direction>> = Data.create2darray(3, 3, null);
 }
 
 static function init() {
@@ -238,6 +238,52 @@ static function init_new_level(name: String) {
     level_file.flush();
 
     load_level(name);
+}
+
+static function load_level_old(name: String) {    
+    var level_file = SharedObject.getLocal(name);
+    
+    tiles = level_file.data.tiles;
+
+    goals = Unserializer.run(level_file.data.goals);
+
+    // NOTE: Box .x and .y fields turned into .pos field
+    // var boxes_old = Unserializer.run(level_file.data.boxes);
+    // var boxes = [for (i in 0...WORLD_WIDTH) [for (j in 0...WORLD_HEIGHT) null]];
+    // for (b in boxes_old) {
+    //     boxes[b.x][b.y] = {
+    //         id: b.id,
+    //         pos: {x: b.x, y: b.y},
+    //         is_magnet: b.is_magnet,
+    //         color: b.color,
+    //         group_id: b.group_id,
+    //     };
+    // }
+
+    // Setup boxes_by_id
+    boxes_by_id = new Map<Int, Box>();
+    for (x in 0...WORLD_WIDTH) {
+        for (y in 0...WORLD_HEIGHT) {
+            if (boxes[x][y] != null) {
+                var box = boxes[x][y];
+                boxes_by_id[box.id] = box;
+            }
+        }
+    }
+
+    groups = Unserializer.run(level_file.data.groups);
+
+    // Find group_id_max
+    group_id_max = 0;
+    for (id in groups.keys()) {
+        if (id > group_id_max) {
+            group_id_max = id;
+        }
+    }
+
+    history = new Array<Snapshot>();
+
+    Player.pos = Unserializer.run(level_file.data.player_pos);
 }
 
 static function load_level(name: String) {
