@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <project>
-    <set name="windowwidth" value="900" />
+    <set name="windowwidth" value="1500" />
     <set name="windowheight" value="900" />
   
     <meta 

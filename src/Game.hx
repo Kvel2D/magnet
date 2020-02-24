@@ -36,11 +36,8 @@ typedef Snapshot = {
 
 @:publicFields
 class Player {
-// force unindent
-
-static var pos = v(0, 0);
-static var direction = Direction_Up;
-
+    static var pos = v(0, 0);
+    static var direction = Direction_Up;
 }
 
 
@@ -65,6 +62,7 @@ static var magnet_group = new Array<Int>();
 static var history: Array<Snapshot>;
 
 function new() {
+
 }
 
 static function init() {
@@ -251,8 +249,8 @@ static function load_level(name: String) {
     Player.pos = Unserializer.run(level_file.data.player_pos);
 }
 
-static function save_level(name: String) {
-    var level_file = SharedObject.getLocal(name);
+static function save_level() {
+    var level_file = SharedObject.getLocal(LevelSelect.current_level);
     
     level_file.data.tiles = tiles;
 
@@ -306,30 +304,38 @@ static function update() {
         undo();
     }
 
-    // Change magnet direction
-    // if (Input.justpressed(Key.LEFT)) {
-    //     Player.direction = Direction_Left;
-    //     save_snapshot();
-    // } else if (Input.justpressed(Key.RIGHT)) {
-    //     Player.direction = Direction_Right;
-    //     save_snapshot();
-    // } else if (Input.justpressed(Key.UP)) {
-    //     Player.direction = Direction_Up;
-    //     save_snapshot();
-    // } else if (Input.justpressed(Key.DOWN)) {
-    //     Player.direction = Direction_Down;
-    //     save_snapshot();
-    // }
+    var left = Input.delaypressed(Key.LEFT, 10) || Input.delaypressed(Key.A, 10);
+    var right = Input.delaypressed(Key.RIGHT, 10) || Input.delaypressed(Key.D, 10);
+    var up = Input.delaypressed(Key.UP, 10) || Input.delaypressed(Key.W, 10);
+    var down = Input.delaypressed(Key.DOWN, 10) || Input.delaypressed(Key.S, 10);
+
+    var left_pressed_at_all = Input.pressed(Key.LEFT) || Input.pressed(Key.A);
+    var right_pressed_at_all = Input.pressed(Key.RIGHT) || Input.pressed(Key.D);
+    var up_pressed_at_all = Input.pressed(Key.UP) || Input.pressed(Key.W);
+    var down_pressed_at_all = Input.pressed(Key.DOWN) || Input.pressed(Key.S);
+
+    if (left_pressed_at_all) {
+        right = false;
+    }
+    if (right_pressed_at_all) {
+        left = false;
+    }
+    if (down_pressed_at_all) {
+        up = false;
+    }
+    if (up_pressed_at_all) {
+        down = false;
+    }
 
     // Rotate player
-    if (Input.delaypressed(Key.LEFT, 10)) {
+    if (left) {
         switch (Player.direction) {
             case Direction_Down: Player.direction = Direction_Right;
             case Direction_Right: Player.direction = Direction_Up;
             case Direction_Up: Player.direction = Direction_Left;
             case Direction_Left: Player.direction = Direction_Down;
         }
-    } else if (Input.delaypressed(Key.RIGHT, 10)) {
+    } else if (right) {
         switch (Player.direction) {
             case Direction_Down: Player.direction = Direction_Left;
             case Direction_Left: Player.direction = Direction_Up;
@@ -344,7 +350,7 @@ static function update() {
     var player_d = v(0, 0);
     var moving_backwards = false;
 
-    if (Input.delaypressed(Key.UP, 10)) {
+    if (up) {
         switch (Player.direction) {
             case Direction_Down: player_d.y = 1;
             case Direction_Up: player_d.y = -1;
@@ -352,7 +358,7 @@ static function update() {
             case Direction_Left: player_d.x = -1;
         }
     }
-    if (Input.delaypressed(Key.DOWN, 10)) {
+    if (down) {
         moving_backwards = true;
 
         switch (Player.direction) {
@@ -362,40 +368,6 @@ static function update() {
             case Direction_Left: player_d.x = 1;
         }
     }
-
-
-
-    // if (Input.delaypressed(Key.W, 10)) {
-    //     player_d.y = -1;
-    // }
-    // if (Input.delaypressed(Key.S, 10)) {
-    //     player_d.y = 1;
-    // }
-    // if (Input.delaypressed(Key.A, 10)) {
-    //     player_d.x = -1;
-    // }
-    // if (Input.delaypressed(Key.D, 10)) {
-    //     player_d.x = 1;
-    // }
-
-    // // Only move if one button pressed
-    // var count = 0;
-    // if (Input.pressed(Key.W)) {
-    //     count++;
-    // }
-    // if (Input.pressed(Key.A)) {
-    //     count++;
-    // }
-    // if (Input.pressed(Key.S)) {
-    //     count++;
-    // }
-    // if (Input.pressed(Key.D)) {
-    //     count++;
-    // }
-    // if (count > 1) {
-    //     player_d.x = 0;
-    //     player_d.y = 0;
-    // }
 
     // 
     // Find if can move
@@ -561,10 +533,10 @@ static function update() {
 
     render();
 
-    Text.display(0, 0, Main.current_level);
+    Text.display(0, 0, LevelSelect.current_level);
 
     if (Input.justpressed(Key.R)) {
-        load_level(Main.current_level);
+        load_level(LevelSelect.current_level);
     }
 }
 

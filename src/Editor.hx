@@ -19,13 +19,13 @@ enum ToolType {
     ToolType_PlaceWater;
 }
 
-@:publicFields
 class Editor {
 // force unindent
 
 static var current_tool = ToolType_PlaceBox;
+static var HOVERING_BUTTONE = false;
 
-function new() {
+public function new() {
 
 }
 
@@ -36,103 +36,62 @@ static inline function mouse_y(): Int {
     return Math.floor(Mouse.y / Game.TILESIZE / Game.SCALE);
 }
 
-static var HOVERING_BUTTONE = false;
-static function button(x: Float, y: Float, text: String, selected: Bool): Bool {
-    var PADDING = 10;
-    var width = Text.width(text) + PADDING * 2;
-    var height = Text.height(text) + PADDING * 2;
-
-    var hovering = Math.point_box_intersect(Mouse.x, Mouse.y, x, y, width, height);
-    if (hovering) {
-        HOVERING_BUTTONE = true;
-    }
-    var button_color = if (hovering && (Mouse.leftheld() || Mouse.leftclick())) {
-        Col.YELLOW;
-    } else {
-        Col.GRAY;
-    }
-
-    if (selected) {
-        button_color = Col.YELLOW;
-    }
-
-    Gfx.fillbox(x, y, width, height, button_color);
-    Text.display(x + PADDING, y + PADDING, text, Col.WHITE);
-    return Mouse.leftclick() && hovering;
-}
-
-static function delete(x, y) {
-    // Remove wall
-    Game.tiles[x][y] = Tile.Floor;
-
-    // Remove box
-    var box = Game.boxes[x][y];
-    if (box != null) {
-        // Detach from group
-        if (box.group_id != Game.GROUP_ID_NONE) {
-            Game.groups[box.group_id].remove(box.id);
-
-            // Single box groups are auto-removed also
-            if (Game.groups[box.group_id].length == 1) {
-                Game.groups.remove(box.group_id);
-            }
-        }
-
-        // NOTE: magnet group is calculated at the end of the frame, technically making it possible to access it right after exiting editor? So have to do this just incase
-        Game.magnet_group.remove(box.id);
-        
-        // Remove from boxes
-        Game.boxes.vset(box.pos, null);
-        Game.boxes_by_id.remove(box.id);
-    }
-
-    // Remove goal
-    var removed_goal = null;
-    for (g in Game.goals) {
-        if (v_eql(g, v(x, y))) {
-            removed_goal = g;
-            break;
-        }
-    }
-    if (removed_goal != null) {
-        Game.goals.remove(removed_goal);
-    }
-}
-
-static function get_box_id(): Int {
-    // Find lowest available box id
-    var free_id = -1;
-    for (id in 0...100) {
-        if (!Game.boxes_by_id.exists(id)) {
-            free_id = id;
-            break;
-        }
-    }
-
-    if (free_id == -1) {
-        trace('RAN OUT OF BOX IDS');
-    }
-
-    return free_id;
-}
-
-static function update() {    
+public static function update() {    
     Game.render();
-    Text.display(0, 0, Main.current_level);
+    Text.display(0, 0, LevelSelect.current_level);
 
     Text.display(0, Text.height(), 'editing', Col.WHITE);
 
     var box_size = Game.TILESIZE * Game.SCALE;
     Gfx.drawbox(mouse_x() * box_size, mouse_y() * box_size, box_size, box_size, Col.PINK);
 
+    function button(x: Float, y: Float, text: String, selected: Bool): Bool {
+        var PADDING = 10;
+        var width = Text.width(text) + PADDING * 2;
+        var height = Text.height(text) + PADDING * 2;
+
+        var hovering = Math.point_box_intersect(Mouse.x, Mouse.y, x, y, width, height);
+        if (hovering) {
+            HOVERING_BUTTONE = true;
+        }
+        var button_color = if (hovering && (Mouse.leftheld() || Mouse.leftclick())) {
+            Col.YELLOW;
+        } else {
+            Col.GRAY;
+        }
+
+        if (selected) {
+            button_color = Col.YELLOW;
+        }
+
+        Gfx.fillbox(x, y, width, height, button_color);
+        Text.display(x + PADDING, y + PADDING, text, Col.WHITE);
+        return Mouse.leftclick() && hovering;
+    }
+
     HOVERING_BUTTONE = false;
-    var tools_x = 600;
+    var tools_x = 1000;
     var tools_y = 0;
     for (tool in Type.allEnums(ToolType)) {
-        if (button(tools_x, tools_y, '$tool', current_tool == tool)) {
+        function tool_text(tool: ToolType): String {
+            return switch (tool) {
+                case ToolType_Delete: 'Delete';
+                case ToolType_PlaceWall: 'Wall';
+                case ToolType_PlaceBox: 'Magnet';
+                case ToolType_PlaceNormalBox: 'Box';
+                case ToolType_PlaceGoal: 'Goal';
+                case ToolType_PlacePlayer: 'Player';
+                case ToolType_PlaceWater: 'Water';
+            }
+        }
+
+        if (button(tools_x, tools_y, tool_text(tool), current_tool == tool)) {
             current_tool = tool;
         }
         tools_y += 40;
+    }
+    if (button(tools_x, tools_y, 'Reset', false)) {
+        Game.init_new_level(LevelSelect.current_level);
     }
 
     function tool_shortcut(key, tool) {
@@ -154,6 +113,61 @@ static function update() {
 
         var no_player = !v_eql(Player.pos, v(x, y));
         var box_here = Game.boxes[x][y] != null;
+
+        function get_box_id(): Int {
+            // Find lowest available box id
+            var free_id = -1;
+            for (id in 0...100) {
+                if (!Game.boxes_by_id.exists(id)) {
+                    free_id = id;
+                    break;
+                }
+            }
+
+            if (free_id == -1) {
+                trace('RAN OUT OF BOX IDS');
+            }
+
+            return free_id;
+        }
+
+        function delete(x, y) {
+            // Remove wall
+            Game.tiles[x][y] = Tile.Floor;
+
+            // Remove box
+            var box = Game.boxes[x][y];
+            if (box != null) {
+                // Detach from group
+                if (box.group_id != Game.GROUP_ID_NONE) {
+                    Game.groups[box.group_id].remove(box.id);
+
+                    // Single box groups are auto-removed also
+                    if (Game.groups[box.group_id].length == 1) {
+                        Game.groups.remove(box.group_id);
+                    }
+                }
+
+                // NOTE: magnet group is calculated at the end of the frame, technically making it possible to access it right after exiting editor? So have to do this just incase
+                Game.magnet_group.remove(box.id);
+                
+                // Remove from boxes
+                Game.boxes.vset(box.pos, null);
+                Game.boxes_by_id.remove(box.id);
+            }
+
+            // Remove goal
+            var removed_goal = null;
+            for (g in Game.goals) {
+                if (v_eql(g, v(x, y))) {
+                    removed_goal = g;
+                    break;
+                }
+            }
+            if (removed_goal != null) {
+                Game.goals.remove(removed_goal);
+            }
+        }
 
         switch (current_tool) {
             case ToolType_PlaceWall: {
