@@ -18,12 +18,6 @@ public static var update_thumbnails = true;
 public static function init() {
     // Load level list
     var level_list_file = SharedObject.getLocal('level-list');
-    if (level_list_file.data.level_list == null) {
-        // Setup default level if it doesn't exist yet
-        level_list_file.data.level_list = ['default'];
-        Game.init_new_level('default');
-        level_list_file.flush();
-    }
     level_list = level_list_file.data.level_list;
 
     current_level = 'default';
@@ -77,8 +71,10 @@ public static function update() {
             level_list_file.data.level_list = level_list;
             level_list_file.flush();
 
-            Game.init_new_level(new_level_name);
-            Game.load_level(new_level_name);
+            // Init new level to be same as default
+            Game.load_level('default');
+            LevelSelect.current_level = new_level_name;
+            Game.save_level();
             Main.state = State_Game;
         } else {
             trace('Level with name $new_level_name already exists!');

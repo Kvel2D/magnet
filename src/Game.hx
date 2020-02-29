@@ -21,6 +21,11 @@ typedef Box = {
     group_id: Int,
 };
 
+typedef SinkingBox = {
+    box: Box,
+    timer: Int,
+};
+
 enum Direction {
     Direction_Down;
     Direction_Up;
@@ -34,83 +39,39 @@ typedef Snapshot = {
     boxes: Map<Int, Vec2i>
 };
 
-@:publicFields
 class Player {
-    static var pos = v(0, 0);
-    static var direction = Direction_Up;
+    public static var pos = v(0, 0);
+    public static var direction = Direction_Up;
 }
 
 
-@:publicFields
 class Game {
 // force unindent
 
-static inline var WORLD_WIDTH = 20;
-static inline var WORLD_HEIGHT = 20;
-static inline var TILESIZE = 16;
-static inline var SCALE = 4;
+public static inline var WORLD_WIDTH = 20;
+public static inline var WORLD_HEIGHT = 20;
+public static inline var TILESIZE = 16;
+public static inline var SCALE = 4;
+public static inline var SINK_TIMER_MAX = 60;
 
-static var tiles: Array<Array<Int>>;
-static var goals: Array<Vec2i>;
-static var boxes: Array<Array<Box>>;
-static var boxes_by_id: Map<Int, Box>;
+public static var tiles: Array<Array<Int>>;
+public static var goals: Array<Vec2i>;
+public static var boxes: Array<Array<Box>>;
+public static var boxes_by_id: Map<Int, Box>;
 
-static var groups: Map<Int, Array<Int>>;
-static inline var GROUP_ID_NONE = -1;
-static var group_id_max = GROUP_ID_NONE + 1;
+public static var sinking_boxes: Array<SinkingBox>;
+
+public static var groups: Map<Int, Array<Int>>;
+public static inline var GROUP_ID_NONE = -1;
+public static var group_id_max = GROUP_ID_NONE + 1;
 static var magnet_group = new Array<Int>();
 static var history: Array<Snapshot>;
 
-function new() {
+public function new() {
 
 }
 
-static function init() {
-    tiles = Data.create2darray(WORLD_WIDTH, WORLD_HEIGHT, Tile.Wall);
-    boxes_by_id = new Map<Int, Box>();
-    // boxes = Data.create2darray(WORLD_WIDTH, WORLD_HEIGHT, null);
-    boxes = [for (i in 0...WORLD_WIDTH) [for (j in 0...WORLD_HEIGHT) null]];
-    goals = new Array<Vec2i>();
-    history = new Array<Snapshot>();
-    groups = new Map<Int, Array<Int>>();
-
-    for (pos in v_range(v(1, 1), v(WORLD_WIDTH - 1, WORLD_HEIGHT - 1))) {
-        tiles.vset(pos, Tile.Floor);
-    }
-    tiles[5][10] = Tile.Wall;
-    tiles[5][11] = Tile.Wall;
-    tiles[5][12] = Tile.Wall;
-
-    Player.pos = v(10, 8);
-    tiles.vset(Player.pos, Tile.Floor);
-
-    // NOTE: only works if at least one of the boxes isn't connected yet
-    // i.e. changing connections doesn't work
-    function connect(p1: Vec2i, p2: Vec2i) {
-        var b1 = boxes.vget(p1);
-        var b2 = boxes.vget(p2);
-        var new_group = false;
-        if (b1.group_id != GROUP_ID_NONE) {
-            var group_id = b1.group_id;
-            groups[group_id].push(b2.id);
-            b2.group_id = group_id;
-        } else if (b2.group_id != GROUP_ID_NONE) {
-            var group_id = b2.group_id;
-            groups[group_id].push(b1.id);
-            b1.group_id = group_id;
-        } else {
-            group_id_max++;
-            var group_id = group_id_max;
-            groups[group_id] = new Array<Int>();
-            groups[group_id].push(b1.id);
-            groups[group_id].push(b2.id);
-            b1.group_id = group_id;
-            b2.group_id = group_id;
-        }
-    }
-}
-
-static function render() {
+public static function render() {
     function toscreen(a: Vec2i): Vec2i {
         return v_mult(a, TILESIZE * SCALE);
     }
@@ -131,18 +92,33 @@ static function render() {
         drawtile(toscreen(g), 'tiles', Tile.Goal);
     }
 
-    // Draw boxes
-    for (box_id in boxes_by_id.keys()) {
-        var box = boxes_by_id[box_id];
-        var box_tile = if (box.color == BoxColor_Orange) {
+    function box_tile(box: Box): Int {
+        return if (box.color == BoxColor_Orange) {
             Tile.BoxOrange;
         } else if (box.is_magnet) {
             Tile.BoxMagnet;
         } else {
             Tile.Box;
         }
+    }
 
-        drawtile(toscreen(box.pos), 'tiles', box_tile);
+    // Update and draw sinking boxes
+    for (sink in sinking_boxes.copy()) {
+        sink.timer--;
+        if (sink.timer < 0) {
+            sinking_boxes.remove(sink);
+        } else {
+            Gfx.imagealpha = (Math.round(sink.timer / 15) * 15 / SINK_TIMER_MAX);
+            drawtile(toscreen(sink.box.pos), 'tiles', box_tile(sink.box));
+        }
+    }
+    Gfx.imagealpha = 1.0;
+
+    // Draw boxes
+    for (box_id in boxes_by_id.keys()) {
+        var box = boxes_by_id[box_id];
+        
+        drawtile(toscreen(box.pos), 'tiles', box_tile(box));
     }
 
     // Draw connections
@@ -193,7 +169,7 @@ static function move_box(from: Vec2i, d: Vec2i) {
     box.pos = to;
 }
 
-static function init_new_level(name: String) {
+public static function init_new_level(name: String) {
     var level_file = SharedObject.getLocal(name);
 
     // Default tiles are all floor with walls on the sides
@@ -214,9 +190,11 @@ static function init_new_level(name: String) {
     level_file.flush();
 
     load_level(name);
+
+    sinking_boxes = new Array<SinkingBox>();
 }
 
-static function load_level(name: String) {
+public static function load_level(name: String) {
     var level_file = SharedObject.getLocal(name);
     
     tiles = level_file.data.tiles;
@@ -247,9 +225,11 @@ static function load_level(name: String) {
     history = new Array<Snapshot>();
 
     Player.pos = Unserializer.run(level_file.data.player_pos);
+
+    sinking_boxes = new Array<SinkingBox>();
 }
 
-static function save_level() {
+public static function save_level() {
     var level_file = SharedObject.getLocal(LevelSelect.current_level);
     
     level_file.data.tiles = tiles;
@@ -263,45 +243,28 @@ static function save_level() {
     level_file.data.player_pos = Serializer.run(Player.pos);
 }
 
-static function save_snapshot() {
-    var boxes_snapshot = new Map<Int, Vec2i>();
-    for (id in boxes_by_id.keys()) {
-        var box = boxes_by_id[id];
-        boxes_snapshot[id] = box.pos;
-    }
-
-    history.push({
-        player: v_copy(Player.pos),
-        player_dir: Player.direction,
-        boxes: boxes_snapshot
-    });
-}
-
-static function undo() {
-    if (history.length == 0) {
-        return;
-    }
-
-    var s = history.pop();
-    
-    Player.pos = v_copy(s.player);
-    Player.direction = s.player_dir;
-
-    for (pos in v_range(v(0, 0), v(WORLD_WIDTH, WORLD_HEIGHT))) {
-        boxes.vset(pos, null);
-    }
-    for (box_id in s.boxes.keys()) {
-        var box = boxes_by_id[box_id];
-        var old_pos = s.boxes[box_id];
-        box.pos = v_copy(old_pos);
-
-        boxes.vset(box.pos, box);
-    }
-}
-
-static function update() {
+public static function update() {
+    // Undo
     if (Input.delaypressed(Key.Z, 10)) {
-        undo();
+        if (history.length == 0) {
+            return;
+        }
+
+        var s = history.pop();
+
+        Player.pos = v_copy(s.player);
+        Player.direction = s.player_dir;
+
+        for (pos in v_range(v(0, 0), v(WORLD_WIDTH, WORLD_HEIGHT))) {
+            boxes.vset(pos, null);
+        }
+        for (box_id in s.boxes.keys()) {
+            var box = boxes_by_id[box_id];
+            var old_pos = s.boxes[box_id];
+            box.pos = v_copy(old_pos);
+
+            boxes.vset(box.pos, box);
+        }
     }
 
     var left = Input.delaypressed(Key.LEFT, 10) || Input.delaypressed(Key.A, 10);
@@ -434,7 +397,18 @@ static function update() {
     // Move everything that was marked for moving
     //
     if (can_move && !v_eql(player_d, v(0, 0))) {
-        save_snapshot();
+        // Save world state before moving to history
+        var boxes_snapshot = new Map<Int, Vec2i>();
+        for (id in boxes_by_id.keys()) {
+            var box = boxes_by_id[id];
+            boxes_snapshot[id] = box.pos;
+        }
+        history.push({
+            player: v_copy(Player.pos),
+            player_dir: Player.direction,
+            boxes: boxes_snapshot
+        });
+        
         // Move player
         Player.pos = v_add(Player.pos, player_d);
 
@@ -464,9 +438,6 @@ static function update() {
             }
         } else if (player_d.y != 0) {
             for (x in 0...WORLD_WIDTH) {
-                var found_magnet = false;
-                var pushing = false;
-
                 var y = if (player_d.y == -1) {
                     // Moving up, go back from top
                     0;
@@ -531,6 +502,70 @@ static function update() {
         add_box(magnet_dest);
     }
 
+    //
+    // Sink boxes that are above water without support
+    //
+
+    // First, find which groups are supported and which aren't
+    var group_is_supported = new Map<Int, Bool>();
+    function check_supported(group: Array<Int>) {
+        var supported = false;
+
+        // Group is supported if at least one box in the group is not above water
+        for (b_id in group) {
+            var box = boxes_by_id[b_id];
+            if (tiles.vget(box.pos) != Tile.Water) {
+                supported = true;
+                break;
+            }
+        }
+
+        return supported;
+    }
+    for (g_id in groups.keys()) {
+        var group = groups[g_id];
+        group_is_supported[g_id] = check_supported(group);
+    }
+    var magnet_supported = check_supported(magnet_group);
+
+    // Now check which boxes are supported
+    // NOTE: a box can be both in an unsupported group and in a supported group (a multi-piece that is also magnetized, the multi-piece itself is not supported but it won't sink due to being supported by magnets)
+    // So when checking the condition for box to sink is that it's not part of ANY supported groups
+    for (b_id in boxes_by_id.keys()) {
+        var box = boxes_by_id[b_id];
+
+        var supported = false;
+
+        if (tiles.vget(box.pos) != Tile.Water) {
+            // Supported by itself
+            supported = true;
+        } else if (box.group_id != GROUP_ID_NONE && group_is_supported[box.group_id]) {
+            // Supported by normal group
+            supported = true;
+        } else if (box.is_magnet && magnet_supported) {
+            // Supported by magnet group
+            supported = true;
+        }
+
+        if (!supported) {
+            // Remove box
+            boxes_by_id.remove(b_id);
+            boxes.vset(box.pos, null);
+            if (box.group_id != GROUP_ID_NONE) {
+                groups[box.group_id].remove(box.id);
+            }
+            if (box.is_magnet) {
+                magnet_group.remove(box.id);
+            }
+            
+            // Start the sink animation
+            sinking_boxes.push({
+                box: box,
+                timer: SINK_TIMER_MAX,
+            });
+        }
+    }
+
     render();
 
     Text.display(0, 0, LevelSelect.current_level);
@@ -541,3 +576,4 @@ static function update() {
 }
 
 }
+

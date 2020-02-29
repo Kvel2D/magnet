@@ -17,6 +17,7 @@ enum ToolType {
     ToolType_PlaceGoal;
     ToolType_PlacePlayer;
     ToolType_PlaceWater;
+    ToolType_PlaceFloor;
 }
 
 class Editor {
@@ -82,6 +83,7 @@ public static function update() {
                 case ToolType_PlaceGoal: 'Goal';
                 case ToolType_PlacePlayer: 'Player';
                 case ToolType_PlaceWater: 'Water';
+                case ToolType_PlaceFloor: 'Floor';
             }
         }
 
@@ -89,9 +91,6 @@ public static function update() {
             current_tool = tool;
         }
         tools_y += 40;
-    }
-    if (button(tools_x, tools_y, 'Reset', false)) {
-        Game.init_new_level(LevelSelect.current_level);
     }
 
     function tool_shortcut(key, tool) {
@@ -106,13 +105,13 @@ public static function update() {
     tool_shortcut(Key.P, ToolType_PlacePlayer);
     tool_shortcut(Key.W, ToolType_PlaceWall);
     tool_shortcut(Key.H, ToolType_PlaceWater);
+    tool_shortcut(Key.F, ToolType_PlaceFloor);
 
     if (!HOVERING_BUTTONE && (Mouse.leftclick() || Mouse.leftheld())) {
-        var x = mouse_x();
-        var y = mouse_y();
+        var pos = v(mouse_x(), mouse_y());
 
-        var no_player = !v_eql(Player.pos, v(x, y));
-        var box_here = Game.boxes[x][y] != null;
+        var no_player = !v_eql(Player.pos, pos);
+        var box_here = Game.boxes.vget(pos) != null;
 
         function get_box_id(): Int {
             // Find lowest available box id
@@ -131,12 +130,12 @@ public static function update() {
             return free_id;
         }
 
-        function delete(x, y) {
+        function delete() {
             // Remove wall
-            Game.tiles[x][y] = Tile.Floor;
+            Game.tiles.vset(pos, Tile.Floor);
 
             // Remove box
-            var box = Game.boxes[x][y];
+            var box = Game.boxes.vget(pos);
             if (box != null) {
                 // Detach from group
                 if (box.group_id != Game.GROUP_ID_NONE) {
@@ -148,9 +147,6 @@ public static function update() {
                     }
                 }
 
-                // NOTE: magnet group is calculated at the end of the frame, technically making it possible to access it right after exiting editor? So have to do this just incase
-                Game.magnet_group.remove(box.id);
-                
                 // Remove from boxes
                 Game.boxes.vset(box.pos, null);
                 Game.boxes_by_id.remove(box.id);
@@ -159,7 +155,7 @@ public static function update() {
             // Remove goal
             var removed_goal = null;
             for (g in Game.goals) {
-                if (v_eql(g, v(x, y))) {
+                if (v_eql(g, pos)) {
                     removed_goal = g;
                     break;
                 }
@@ -171,58 +167,57 @@ public static function update() {
 
         switch (current_tool) {
             case ToolType_PlaceWall: {
-                if (no_player) {
-                    delete(x, y);
-                    Game.tiles[x][y] = Tile.Wall;
-                }
+                delete();
+                Game.tiles.vset(pos, Tile.Wall);
             }
             case ToolType_PlaceWater: {
-                if (no_player) {
-                    Game.tiles[x][y] = Tile.Water;
-                }
+                Game.tiles.vset(pos, Tile.Water);
             }
             case ToolType_Delete: {
-                delete(x, y);
+                delete();
             }
             case ToolType_PlaceBox: {                
                 if (no_player) {
-                    delete(x, y);
+                    delete();
 
                     var box = {
                         id: get_box_id(),
-                        pos: v(x, y),
+                        pos: v_copy(pos),
                         is_magnet: true,
                         color: BoxColor_Gray,
                         group_id: Game.GROUP_ID_NONE,
                     };
                     Game.boxes_by_id[box.id] = box;
-                    Game.boxes[x][y] = box;
+                    Game.boxes.vset(pos, box);
                 }
             }
             case ToolType_PlaceNormalBox: {                
                 if (no_player) {
-                    delete(x, y);
+                    delete();
 
                     var box = {
                         id: get_box_id(),
-                        pos: v(x, y),
+                        pos: v_copy(pos),
                         is_magnet: false,
                         color: BoxColor_Orange,
                         group_id: Game.GROUP_ID_NONE,
                     };
                     Game.boxes_by_id[box.id] = box;
-                    Game.boxes[x][y] = box;
+                    Game.boxes.vset(pos, box);
                 }
             }
             case ToolType_PlaceGoal: {
-                delete(x, y);
+                delete();
 
-                Game.goals.push(v(x, y));
+                Game.goals.push(v_copy(pos));
             }
             case ToolType_PlacePlayer: {
-                delete(x, y);
+                delete();
 
-                Player.pos = v(x, y);
+                Player.pos = v_copy(pos);
+            }
+            case ToolType_PlaceFloor: {
+                Game.tiles.vset(pos, Tile.Floor);
             }
         }
     }
