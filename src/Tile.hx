@@ -23,5 +23,6 @@ static inline var BoxOrange = at(0, 5);
 static inline var Goal = at(0, 1);
 static inline var Water = at(2, 5);
 static inline var Cross = at(3, 5);
+static inline var Lava = at(4, 5);
 
 }

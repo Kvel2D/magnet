@@ -17,6 +17,7 @@ enum ToolType {
     ToolType_PlaceGoal;
     ToolType_PlacePlayer;
     ToolType_PlaceWater;
+    ToolType_PlaceLava;
     ToolType_PlaceFloor;
 }
 
@@ -83,6 +84,7 @@ public static function update() {
                 case ToolType_PlaceGoal: 'Goal';
                 case ToolType_PlacePlayer: 'Player';
                 case ToolType_PlaceWater: 'Water';
+                case ToolType_PlaceLava: 'Lava';
                 case ToolType_PlaceFloor: 'Floor';
             }
         }
@@ -105,6 +107,7 @@ public static function update() {
     tool_shortcut(Key.P, ToolType_PlacePlayer);
     tool_shortcut(Key.W, ToolType_PlaceWall);
     tool_shortcut(Key.H, ToolType_PlaceWater);
+    tool_shortcut(Key.L, ToolType_PlaceLava);
     tool_shortcut(Key.F, ToolType_PlaceFloor);
 
     if (!HOVERING_BUTTONE && (Mouse.leftclick() || Mouse.leftheld())) {
@@ -172,6 +175,9 @@ public static function update() {
             }
             case ToolType_PlaceWater: {
                 Game.tiles.vset(pos, Tile.Water);
+            }
+            case ToolType_PlaceLava: {
+                Game.tiles.vset(pos, Tile.Lava);
             }
             case ToolType_Delete: {
                 delete();

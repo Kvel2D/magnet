@@ -11,7 +11,7 @@ class Main {
 // force unindent
 
 public static inline var SCREEN_WIDTH = 1500;
-public static inline var SCREEN_HEIGHT = 900;
+public static inline var SCREEN_HEIGHT = 1000;
 
 public static var state = State_Game;
 

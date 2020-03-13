@@ -51,7 +51,7 @@ class Game {
 public static inline var WORLD_WIDTH = 20;
 public static inline var WORLD_HEIGHT = 20;
 public static inline var TILESIZE = 16;
-public static inline var SCALE = 4;
+public static inline var SCALE = 3;
 public static inline var SINK_TIMER_MAX = 60;
 
 public static var tiles: Array<Array<Int>>;
@@ -86,6 +86,9 @@ public static function render() {
     for (pos in v_range(v(0, 0), v(WORLD_WIDTH, WORLD_HEIGHT))) {
         drawtile(toscreen(pos), 'tiles', tiles.vget(pos));
     }
+
+    // Draw boundary
+    Gfx.drawbox(0, 0, WORLD_WIDTH * TILESIZE * SCALE, WORLD_HEIGHT * TILESIZE * SCALE, Col.PINK);
 
     // Draw goals
     for (g in goals) {
@@ -245,7 +248,7 @@ public static function save_level() {
 
 public static function update() {
     // Undo
-    if (Input.delaypressed(Key.Z, 10)) {
+    if (Input.delaypressed(Key.Z, 5)) {
         if (history.length == 0) {
             return;
         }
@@ -269,8 +272,8 @@ public static function update() {
 
     var left = Input.delaypressed(Key.LEFT, 10) || Input.delaypressed(Key.A, 10);
     var right = Input.delaypressed(Key.RIGHT, 10) || Input.delaypressed(Key.D, 10);
-    var up = Input.delaypressed(Key.UP, 10) || Input.delaypressed(Key.W, 10);
-    var down = Input.delaypressed(Key.DOWN, 10) || Input.delaypressed(Key.S, 10);
+    var up = Input.delaypressed(Key.UP, 8) || Input.delaypressed(Key.W, 8);
+    var down = Input.delaypressed(Key.DOWN, 8) || Input.delaypressed(Key.S, 8);
 
     var left_pressed_at_all = Input.pressed(Key.LEFT) || Input.pressed(Key.A);
     var right_pressed_at_all = Input.pressed(Key.RIGHT) || Input.pressed(Key.D);
@@ -346,8 +349,9 @@ public static function update() {
     stack.push(first_pos);
     checked.vset(first_pos, true);
 
-    // Player can't walk on water
-    if (tiles.vget(first_pos) == Tile.Water) {
+    // Player can't walk on water or lava
+    var player_tile = tiles.vget(first_pos);
+    if (player_tile == Tile.Water || player_tile == Tile.Lava) {
         can_move = false;
     }
 
@@ -533,7 +537,6 @@ public static function update() {
     // So when checking the condition for box to sink is that it's not part of ANY supported groups
     for (b_id in boxes_by_id.keys()) {
         var box = boxes_by_id[b_id];
-
         var supported = false;
 
         if (tiles.vget(box.pos) != Tile.Water) {
