@@ -26,6 +26,7 @@ class Editor {
 
 static var current_tool = ToolType_PlaceBox;
 static var HOVERING_BUTTONE = false;
+static var PROTECT_BORDER = true;
 
 public function new() {
 
@@ -43,6 +44,10 @@ public static function update() {
     Text.display(0, 0, LevelSelect.current_level);
 
     Text.display(0, Text.height(), 'editing', Col.WHITE);
+
+    if (Input.justpressed(Key.ZERO)) {
+        PROTECT_BORDER = !PROTECT_BORDER;
+    }
 
     var box_size = Game.TILESIZE * Game.SCALE;
     Gfx.drawbox(mouse_x() * box_size, mouse_y() * box_size, box_size, box_size, Col.PINK);
@@ -110,9 +115,9 @@ public static function update() {
     tool_shortcut(Key.L, ToolType_PlaceLava);
     tool_shortcut(Key.F, ToolType_PlaceFloor);
 
-    if (!HOVERING_BUTTONE && (Mouse.leftclick() || Mouse.leftheld())) {
-        var pos = v(mouse_x(), mouse_y());
-
+    var pos = v(mouse_x(), mouse_y());
+    var pos_on_border = PROTECT_BORDER && (pos.x == 0 || pos.y == 0 || pos.x == Game.WORLD_WIDTH - 1 || pos.y == Game.WORLD_HEIGHT - 1);
+    if (!HOVERING_BUTTONE && (Mouse.leftclick() || Mouse.leftheld()) && !pos_on_border) {
         var no_player = !v_eql(Player.pos, pos);
         var box_here = Game.boxes.vget(pos) != null;
 

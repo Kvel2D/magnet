@@ -172,31 +172,6 @@ static function move_box(from: Vec2i, d: Vec2i) {
     box.pos = to;
 }
 
-public static function init_new_level(name: String) {
-    var level_file = SharedObject.getLocal(name);
-
-    // Default tiles are all floor with walls on the sides
-    var default_tiles = [for (x in 0...WORLD_WIDTH) [for (y in 0...WORLD_HEIGHT) Tile.Wall]];
-    for (pos in v_range(v(1, 1), v(13, 13))) {
-        default_tiles.vset(pos, Tile.Floor);
-    }
-    level_file.data.tiles = default_tiles;
-
-    level_file.data.goals = Serializer.run(new Array<Vec2i>());
-
-    level_file.data.boxes = Serializer.run([for (i in 0...WORLD_WIDTH) [for (j in 0...WORLD_HEIGHT) null]]);
-
-    level_file.data.groups = Serializer.run(new Map<Int, Array<Int>>());
-
-    level_file.data.player_pos = Serializer.run(v(5, 5));
-
-    level_file.flush();
-
-    load_level(name);
-
-    sinking_boxes = new Array<SinkingBox>();
-}
-
 public static function load_level(name: String) {
     var level_file = SharedObject.getLocal(name);
     
