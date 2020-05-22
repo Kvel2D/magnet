@@ -34,6 +34,8 @@ function update() {
         Game.load_level(LevelSelect.current_level);
         Text.inputbuffer = '';
         state = State_LevelSelect;
+
+        TEST 2 LOL!
     }
 
     // Switch between Game and Editor
