@@ -20,6 +20,8 @@ function init(){
     Gfx.loadtiles('tiles', Game.TILESIZE, Game.TILESIZE);
     Text.size = 2;
 
+    TEST XD
+
     LevelSelect.init();
     Game.load_level(LevelSelect.current_level);
 }
